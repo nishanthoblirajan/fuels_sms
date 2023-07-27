@@ -1,6 +1,7 @@
 import 'package:dart_telegram_bot/dart_telegram_bot.dart';
 import 'package:dart_telegram_bot/telegram_entities.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_background/flutter_background.dart';
 import 'package:telephony/telephony.dart';
 
 onBackgroundMessage(SmsMessage message) {
@@ -28,7 +29,7 @@ sendTelegram(String? message, String? sender) {
           message!.contains('363') &&
           message!.contains('CREDITED')) ||
       (sender!.contains('BPCLIN') && message!.contains('Received')) ||
-      sender!.contains('STERNA')) {
+      (sender!.contains('STERNA'))) {
     Bot(
       token: '6038774955:AAFDOwlNXxC5AMlH_ZvHhjZj0WEHCEqy9r0',
       onReady: (bot) {
@@ -111,6 +112,8 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   String _message = "";
 
+  TextEditingController messageController = TextEditingController();
+  TextEditingController senderController = TextEditingController();
   final Telephony telephony = Telephony.instance;
   @override
   void initState() {
@@ -143,6 +146,15 @@ class _MyHomePageState extends State<MyHomePage> {
       telephony.listenIncomingSms(
           onNewMessage: onMessage, onBackgroundMessage: onBackgroundMessage);
     }
+    final androidConfig = FlutterBackgroundAndroidConfig(
+      notificationTitle: "SMS Automator",
+      notificationText: "SMS automator for Telegram",
+      notificationImportance: AndroidNotificationImportance
+          .Default, // Default is ic_launcher from folder mipmap
+    );
+    bool success =
+        await FlutterBackground.initialize(androidConfig: androidConfig);
+    bool success2 = await FlutterBackground.enableBackgroundExecution();
 
     if (!mounted) return;
   }
@@ -160,6 +172,32 @@ class _MyHomePageState extends State<MyHomePage> {
             Text(
               'This app will read incoming sms and send to Sowdambiga Fuels Telegram group',
             ),
+            TextField(
+              controller: senderController,
+            ),
+            TextField(
+              controller: messageController,
+            ),
+            ElevatedButton(
+                onPressed: () {
+                  sendTelegram(messageController.text, senderController.text);
+                  setState(() {
+                    messageController.clear();
+                    senderController.clear();
+                  });
+                },
+                child: Text('Send')),
+            ElevatedButton(
+                onPressed: () {
+                  bool enabled = FlutterBackground.isBackgroundExecutionEnabled;
+                  if (enabled) {
+                    const snackbar = SnackBar(
+                      content: Text('Enabled'),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(snackbar);
+                  }
+                },
+                child: Text('Check background process')),
             Center(child: Text("Latest received SMS: $_message")),
           ],
         ),
