@@ -24,7 +24,9 @@ sendTelegram(String? message, String? sender) {
   if ((sender!.contains('HDFCBK') &&
           message!.contains('4143') &&
           message!.contains('deposited')) ||
-      (sender!.contains('CANBNK') && message!.contains('363')) ||
+      (sender!.contains('CANBNK') &&
+          message!.contains('363') &&
+          message!.contains('CREDITED')) ||
       (sender!.contains('BPCLIN') && message!.contains('Received')) ||
       sender!.contains('STERNA')) {
     Bot(
