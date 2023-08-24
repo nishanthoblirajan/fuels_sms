@@ -2,6 +2,9 @@ import 'package:dart_telegram_bot/dart_telegram_bot.dart';
 import 'package:dart_telegram_bot/telegram_entities.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background/flutter_background.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:fuels_sms/ParseConstants.dart';
+import 'package:parse_server_sdk/parse_server_sdk.dart';
 import 'package:telephony/telephony.dart';
 
 onBackgroundMessage(SmsMessage message) {
@@ -22,6 +25,19 @@ sendTelegram(String? message, String? sender) {
   String preciseMessage = '';
   debugPrint("sendTelegram called");
 
+  ParseConstants().initParse();
+  /*debugging*/
+  // var messageToParseDatabase = ParseObject('MessageInfo')
+  //   ..set('From', sender)
+  //   ..set('Message', preciseMessage);
+  //
+  // messageToParseDatabase.save().then((value) {
+  //   if (value.success) {
+  //     debugPrint("Response received successfully");
+  //   }
+  // });
+
+  /*debugging end*/
   if ((sender!.contains('HDFCBK') &&
           message!.contains('4143') &&
           message!.contains('deposited')) ||
@@ -29,10 +45,11 @@ sendTelegram(String? message, String? sender) {
           message!.contains('363') &&
           message!.contains('CREDITED')) ||
       (sender!.contains('BPCLIN') && message!.contains('Received')) ||
+      (sender!.contains('BPCLIN') && message!.contains('password')) ||
       (sender!.contains('STERNA'))) {
     Bot(
       token: '6038774955:AAFDOwlNXxC5AMlH_ZvHhjZj0WEHCEqy9r0',
-      onReady: (bot) {
+      onReady: (bot) async {
         if (sender!.contains('HDFCBK')) {
           preciseMessage =
               message!.split('.')[0] + '.' + message!.split('.')[1];
@@ -49,6 +66,16 @@ sendTelegram(String? message, String? sender) {
                 sender.split('-')[1] +
                 ':\n\n' +
                 preciseMessage);
+
+        var messageToParseDatabase = ParseObject('MessageInfo')
+          ..set('From', sender.split('-')[1])
+          ..set('Message', preciseMessage);
+        var response = await messageToParseDatabase.save();
+        if (response.success) {
+          messageToParseDatabase = response.results?.first;
+          print("Response received successfully");
+        }
+
         debugPrint('message sent');
         // bot.start(clean: true).then((value) {
         //   bot.sendMessage(ChatID(-593020411), stringToSend!);
@@ -115,6 +142,9 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController messageController = TextEditingController();
   TextEditingController senderController = TextEditingController();
   final Telephony telephony = Telephony.instance;
+
+  var databaseStatus = 'NA';
+
   @override
   void initState() {
     super.initState();
@@ -139,6 +169,21 @@ class _MyHomePageState extends State<MyHomePage> {
     // If the widget was removed from the tree while the asynchronous platform
     // message was in flight, we want to discard the reply rather than calling
     // setState to update our non-existent appearance.
+    ParseConstants().initParse().then((result) {
+      if (result) {
+        print('Database Connected');
+        setState(() {
+          databaseStatus = 'Connected';
+        });
+        Fluttertoast.showToast(msg: 'Database connected');
+      } else {
+        print('Database Error');
+        setState(() {
+          databaseStatus = 'Not connected';
+        });
+        Fluttertoast.showToast(msg: 'Database error');
+      }
+    });
 
     final bool? result = await telephony.requestPhoneAndSmsPermissions;
 
@@ -146,15 +191,18 @@ class _MyHomePageState extends State<MyHomePage> {
       telephony.listenIncomingSms(
           onNewMessage: onMessage, onBackgroundMessage: onBackgroundMessage);
     }
-    final androidConfig = FlutterBackgroundAndroidConfig(
-      notificationTitle: "SMS Automator",
-      notificationText: "SMS automator for Telegram",
+    const androidConfig = FlutterBackgroundAndroidConfig(
+      notificationTitle: "Zaptr Automator",
+      notificationText: "Your own personal automator",
       notificationImportance: AndroidNotificationImportance
           .Default, // Default is ic_launcher from folder mipmap
     );
     bool success =
         await FlutterBackground.initialize(androidConfig: androidConfig);
-    bool success2 = await FlutterBackground.enableBackgroundExecution();
+    print('Background initialization: ${success.toString()}');
+    if (success) {
+      FlutterBackground.enableBackgroundExecution();
+    }
 
     if (!mounted) return;
   }
@@ -172,6 +220,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Text(
               'This app will read incoming sms and send to Sowdambiga Fuels Telegram group',
             ),
+            Text('Database status: ' + databaseStatus),
             TextField(
               controller: senderController,
             ),
