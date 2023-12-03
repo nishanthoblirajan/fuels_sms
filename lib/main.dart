@@ -60,6 +60,7 @@ sendTelegram(String? message, String? sender) {
           preciseMessage = message!;
         }
         debugPrint(message.split('.')[1]);
+
         bot.sendMessage(
             ChatID(-1001862858056),
             '\nMessage from ' +
@@ -138,6 +139,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String _message = "";
+  bool _scanningEnabled = true; // Variable to track the scanning state
 
   TextEditingController messageController = TextEditingController();
   TextEditingController senderController = TextEditingController();
@@ -189,7 +191,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     if (result != null && result) {
       telephony.listenIncomingSms(
-          onNewMessage: onMessage, onBackgroundMessage: onBackgroundMessage);
+          onNewMessage: _scanningEnabled ? onMessage : _dummyCallback,
+          onBackgroundMessage: onBackgroundMessage);
     }
     const androidConfig = FlutterBackgroundAndroidConfig(
       notificationTitle: "Zaptr Automator",
@@ -207,6 +210,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!mounted) return;
   }
 
+  void _dummyCallback(SmsMessage message) {
+    // Dummy callback, does nothing
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -237,16 +243,25 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 child: Text('Send')),
             ElevatedButton(
-                onPressed: () {
-                  bool enabled = FlutterBackground.isBackgroundExecutionEnabled;
-                  if (enabled) {
-                    const snackbar = SnackBar(
-                      content: Text('Enabled'),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(snackbar);
-                  }
-                },
-                child: Text('Check background process')),
+              onPressed: () {
+                setState(() {
+                  _scanningEnabled = !_scanningEnabled;
+                });
+              },
+              child: Text(_scanningEnabled ? 'Stop Scan' : 'Start Scan'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                bool enabled = FlutterBackground.isBackgroundExecutionEnabled;
+                if (enabled) {
+                  const snackbar = SnackBar(
+                    content: Text('Enabled'),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(snackbar);
+                }
+              },
+              child: Text('Check background process'),
+            ),
             Center(child: Text("Latest received SMS: $_message")),
           ],
         ),
