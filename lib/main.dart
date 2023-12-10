@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:fuels_sms/ParseConstants.dart';
+import 'package:get/get.dart';
 import 'package:parse_server_sdk/parse_server_sdk.dart';
 import 'package:telephony/telephony.dart';
+
+import 'message_history.dart';
 
 onBackgroundMessage(SmsMessage message) {
   debugPrint("onBackgroundMessage called");
@@ -99,7 +102,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Fuels SMS Automator',
       theme: ThemeData(
@@ -223,6 +226,14 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => MessageHistory()));
+                },
+                child: Text('Message history')),
             Text(
               'This app will read incoming sms and send to Sowdambiga Fuels Telegram group',
             ),

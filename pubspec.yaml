@@ -23,6 +23,7 @@ environment:
 
 
 dependencies:
+  get: ^4.6.6
   intl: ^0.17.0
   flutter_background: ^1.2.0
   telephony: ^0.2.0
