@@ -43,7 +43,8 @@ sendTelegram(String? message, String? sender) {
   /*debugging end*/
   if ((sender!.contains('HDFCBK') &&
           message!.contains('4143') &&
-          message!.contains('deposited')) ||
+          message!.contains('deposited') &&
+          !(message!.contains('XX0832'))) ||
       (sender!.contains('CANBNK') &&
           message!.contains('363') &&
           message!.contains('CREDITED')) ||

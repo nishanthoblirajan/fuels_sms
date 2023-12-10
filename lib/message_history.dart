@@ -12,6 +12,7 @@ class MessageHistory extends StatefulWidget {
 class _MessageHistoryState extends State<MessageHistory> {
   List<ParseObject> messages = [];
   String searchFrom = '';
+  String searchMessage = '';
 
   @override
   void initState() {
@@ -23,7 +24,9 @@ class _MessageHistoryState extends State<MessageHistory> {
     final QueryBuilder<ParseObject> queryBuilder =
         QueryBuilder(ParseObject('MessageInfo'))
           ..whereContains('From', searchFrom, caseSensitive: false)
-          ..orderByDescending('createdAt');
+          ..whereContains('Message', searchMessage, caseSensitive: false)
+          ..orderByDescending('createdAt')
+          ..setLimit(6000);
 
     final ParseResponse apiResponse = await queryBuilder.query();
 
@@ -33,6 +36,17 @@ class _MessageHistoryState extends State<MessageHistory> {
       });
     } else {
       print('Error fetching data: ${apiResponse.error?.message}');
+    }
+  }
+
+  Future<void> deleteMessage(String objectId) async {
+    final ParseObject message = ParseObject('MessageInfo')..objectId = objectId;
+    final ParseResponse response = await message.delete();
+
+    if (response.success) {
+      print('Message deleted successfully');
+    } else {
+      print('Error deleting message: ${response.error?.message}');
     }
   }
 
@@ -61,6 +75,20 @@ class _MessageHistoryState extends State<MessageHistory> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              onChanged: (value) {
+                setState(() {
+                  searchMessage = value;
+                  fetchData();
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Search by Message',
+              ),
+            ),
+          ),
           // ListView.builder
           Expanded(
             child: ListView.builder(
@@ -70,6 +98,7 @@ class _MessageHistoryState extends State<MessageHistory> {
                 final from = message.get<String>('From');
                 final msg = message.get<String>('Message');
                 final createdAt = message.get<DateTime>('createdAt');
+                final objectId = message.objectId;
 
                 return ListTile(
                   title: Text(
@@ -77,9 +106,46 @@ class _MessageHistoryState extends State<MessageHistory> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text('Message: $msg'),
-                  trailing: Text(
-                    '${DateFormat('MMM dd, yyyy HH:mm').format(createdAt!)}',
-                    style: TextStyle(color: Colors.grey),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${DateFormat('MMM dd, yyyy HH:mm').format(createdAt!)}',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () {
+                          // Call the deleteMessage method when delete button is pressed
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('Confirm Deletion'),
+                                content: Text(
+                                    'Are you sure you want to delete this message?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      deleteMessage(objectId!);
+                                      Navigator.of(context).pop();
+                                      fetchData(); // Refresh the data after deletion
+                                    },
+                                    child: Text('Delete'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 );
               },
