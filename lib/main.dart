@@ -51,7 +51,7 @@ sendTelegram(String? message, String? sender) {
           message!.contains('CREDITED')) ||
       (sender!.contains('BPCLIN') && message!.contains('Received')) ||
       (sender!.contains('BPCLIN') && message!.contains('password')) ||
-      (sender!.contains('STERNA'))) {
+      (sender!.contains('STERNA') || sender!.contains('ALSRAM'))) {
     Bot(
       token: ApplicationConstants.botToken,
       onReady: (bot) async {
