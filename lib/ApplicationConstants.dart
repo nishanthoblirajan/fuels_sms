@@ -1,8 +1,10 @@
-import 'package:encrypt/encrypt.dart';
 import 'package:encrypt/encrypt.dart' as enc;
+import 'package:encrypt/encrypt.dart';
 
 class ApplicationConstants {
   static const int updateFrequency = 2;
+  static const String botToken =
+      '6038774955:AAFDOwlNXxC5AMlH_ZvHhjZj0WEHCEqy9r0';
   static const String keyParseApplicationId = "myappID";
   static const String keyParseMasterKey = "mymasterKey";
   static const String keyParseServerUrl =

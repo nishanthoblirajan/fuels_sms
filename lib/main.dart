@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:parse_server_sdk/parse_server_sdk.dart';
 import 'package:telephony/telephony.dart';
 
+import 'ApplicationConstants.dart';
 import 'message_history.dart';
 
 onBackgroundMessage(SmsMessage message) {
@@ -52,7 +53,7 @@ sendTelegram(String? message, String? sender) {
       (sender!.contains('BPCLIN') && message!.contains('password')) ||
       (sender!.contains('STERNA'))) {
     Bot(
-      token: '6038774955:AAFDOwlNXxC5AMlH_ZvHhjZj0WEHCEqy9r0',
+      token: ApplicationConstants.botToken,
       onReady: (bot) async {
         if (sender!.contains('HDFCBK')) {
           preciseMessage =
