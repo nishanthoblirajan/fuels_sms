@@ -51,7 +51,10 @@ sendTelegram(String? message, String? sender) {
           message!.contains('CREDITED')) ||
       (sender!.contains('BPCLIN') && message!.contains('Received')) ||
       (sender!.contains('BPCLIN') && message!.contains('password')) ||
-      (sender!.contains('STERNA') || sender!.contains('ALSRAM'))) {
+      (sender!.contains('STERNA') || sender!.contains('ALSRAM')) ||
+      (sender!.contains('CBSSBI') &&
+          message!.contains('6629') &&
+          message!.contains('Credited'))) {
     Bot(
       token: ApplicationConstants.botToken,
       onReady: (bot) async {
@@ -59,6 +62,9 @@ sendTelegram(String? message, String? sender) {
           preciseMessage =
               message!.split('.')[0] + '.' + message!.split('.')[1];
         } else if (sender!.contains('CANBNK')) {
+          preciseMessage =
+              message!.split('.')[0] + '.' + message!.split('.')[1];
+        } else if (sender!.contains('CBSSBI')) {
           preciseMessage =
               message!.split('.')[0] + '.' + message!.split('.')[1];
         } else {
@@ -210,6 +216,7 @@ class _MyHomePageState extends State<MyHomePage> {
     print('Background initialization: ${success.toString()}');
     if (success) {
       FlutterBackground.enableBackgroundExecution();
+      Fluttertoast.showToast(msg: 'App will run in background');
     }
 
     if (!mounted) return;
@@ -241,10 +248,11 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Text('Database status: ' + databaseStatus),
             TextField(
-              controller: senderController,
-            ),
+                controller: senderController,
+                decoration: InputDecoration(label: Text('Sender'))),
             TextField(
               controller: messageController,
+              decoration: InputDecoration(label: Text('Message')),
             ),
             ElevatedButton(
                 onPressed: () {
