@@ -30,18 +30,6 @@ sendTelegram(String? message, String? sender) {
   debugPrint("sendTelegram called");
 
   ParseConstants().initParse();
-  /*debugging*/
-  // var messageToParseDatabase = ParseObject('MessageInfo')
-  //   ..set('From', sender)
-  //   ..set('Message', preciseMessage);
-  //
-  // messageToParseDatabase.save().then((value) {
-  //   if (value.success) {
-  //     debugPrint("Response received successfully");
-  //   }
-  // });
-
-  /*debugging end*/
   if ((sender!.contains('HDFCBK') &&
           message!.contains('4143') &&
           message!.contains('deposited') &&
@@ -54,7 +42,14 @@ sendTelegram(String? message, String? sender) {
       (sender!.contains('STERNA') || sender!.contains('ALSRAM')) ||
       (sender!.contains('CBSSBI') &&
           message!.contains('6629') &&
-          message!.contains('Credited'))) {
+          message!.contains('Credited')) ||
+      (sender!.contains('SBIINB') && message!.contains('transfer')) ||
+      (sender!.contains('SBIBNK') && message!.contains('echeque'))) {
+    debugPrint('Called--------');
+    debugPrint(
+        'Condition: ${(sender!.contains('SBIBNK') && message!.contains('echeque'))}');
+
+    debugPrint(message.toString());
     Bot(
       token: ApplicationConstants.botToken,
       onReady: (bot) async {
@@ -67,10 +62,15 @@ sendTelegram(String? message, String? sender) {
         } else if (sender!.contains('CBSSBI')) {
           preciseMessage =
               message!.split('.')[0] + '.' + message!.split('.')[1];
+        } else if (sender!.contains('SBIINB')) {
+          preciseMessage =
+              message!.split('.')[0] + '.' + message!.split('.')[1];
+        } else if (sender!.contains('SBIBNK')) {
+          preciseMessage = message!;
         } else {
           preciseMessage = message!;
         }
-        debugPrint(message.split('.')[1]);
+        // debugPrint(message.split('.')[0]);
 
         bot.sendMessage(
             ChatID(-1001862858056),
@@ -86,6 +86,8 @@ sendTelegram(String? message, String? sender) {
         if (response.success) {
           messageToParseDatabase = response.results?.first;
           print("Response received successfully");
+        } else {
+          debugPrint('error--------');
         }
 
         debugPrint('message sent');
@@ -257,10 +259,10 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
                 onPressed: () {
                   sendTelegram(messageController.text, senderController.text);
-                  setState(() {
-                    messageController.clear();
-                    senderController.clear();
-                  });
+                  // setState(() {
+                  //   messageController.clear();
+                  //   senderController.clear();
+                  // });
                 },
                 child: Text('Send')),
             ElevatedButton(
