@@ -40,9 +40,7 @@ sendTelegram(String? message, String? sender) {
       (sender!.contains('BPCLIN') && message!.contains('Received')) ||
       (sender!.contains('BPCLIN') && message!.contains('password')) ||
       (sender!.contains('STERNA') || sender!.contains('ALSRAM')) ||
-      (sender!.contains('CBSSBI') &&
-          message!.contains('6629') &&
-          message!.contains('Credited')) ||
+      (sender!.contains('CBSSBI') && message!.contains('Credited')) ||
       (sender!.contains('SBIINB') && message!.contains('transfer')) ||
       (sender!.contains('SBIBNK') && message!.contains('echeque'))) {
     debugPrint('Called--------');
