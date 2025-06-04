@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dart_telegram_bot/dart_telegram_bot.dart';
 import 'package:dart_telegram_bot/telegram_entities.dart';
 import 'package:flutter/material.dart';
@@ -5,31 +7,30 @@ import 'package:flutter_background/flutter_background.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:fuels_sms/ParseConstants.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:parse_server_sdk/parse_server_sdk.dart';
 import 'package:telephony/telephony.dart';
 
-import 'ApplicationConstants.dart';
 import 'message_history.dart';
 
-onBackgroundMessage(SmsMessage message) {
+void onBackgroundMessage(SmsMessage message) {
   debugPrint("onBackgroundMessage called");
 
   sendTelegram(message.body, message.address);
 }
 
-//support
-// 1691651299:AAGyxfnNolH6BP8HcjxtZbYEfo1EKwXVSWc
-//-593020411
+const String telegramBotToken =
+    '6038774955:AAFDOwlNXxC5AMlH_ZvHhjZj0WEHCEqy9r0'; // Replace with your Telegram bot token
+const int telegramChatId = -1001862858056; // Replace with your Telegram chat ID
+const String odooServerUrl =
+    'http://128.199.25.245:8069/api/telegram/message'; // Replace with your Odoo server URL
 
-//real
-// 6038774955:AAFDOwlNXxC5AMlH_ZvHhjZj0WEHCEqy9r0
-// fuels group-
-// -1001862858056
-sendTelegram(String? message, String? sender) {
+Future<void> sendTelegram(String? message, String? sender) async {
   String preciseMessage = '';
   debugPrint("sendTelegram called");
 
   ParseConstants().initParse();
+
   if ((sender!.contains('HDFCBK') &&
           message!.contains('4143') &&
           message!.contains('deposited') &&
@@ -42,36 +43,31 @@ sendTelegram(String? message, String? sender) {
       (sender!.contains('STERNA') || sender!.contains('ALSRAM')) ||
       (sender!.contains('CBSSBI') && message!.contains('Credited')) ||
       (sender!.contains('SBIINB') && message!.contains('transfer')) ||
-      (sender!.contains('SBIBNK') && message!.contains('echeque'))) {
+      (sender!.contains('SBIBNK') && message!.contains('echeque')) ||
+      (sender!.contains('SBIPSG') && message!.contains('credited')) ||
+      (sender.contains('PHONPE') && message!.contains('OTP'))) {
     debugPrint('Called--------');
     debugPrint(
         'Condition: ${(sender!.contains('SBIBNK') && message!.contains('echeque'))}');
 
     debugPrint(message.toString());
     Bot(
-      token: ApplicationConstants.botToken,
+      token: telegramBotToken,
       onReady: (bot) async {
-        if (sender!.contains('HDFCBK')) {
+        if (sender!.contains('HDFCBK') ||
+            sender!.contains('CANBNK') ||
+            sender!.contains('CBSSBI') ||
+            sender!.contains('SBIINB') ||
+            sender!.contains('SBIPSG') ||
+            sender!.contains('PHONPE')) {
           preciseMessage =
               message!.split('.')[0] + '.' + message!.split('.')[1];
-        } else if (sender!.contains('CANBNK')) {
-          preciseMessage =
-              message!.split('.')[0] + '.' + message!.split('.')[1];
-        } else if (sender!.contains('CBSSBI')) {
-          preciseMessage =
-              message!.split('.')[0] + '.' + message!.split('.')[1];
-        } else if (sender!.contains('SBIINB')) {
-          preciseMessage =
-              message!.split('.')[0] + '.' + message!.split('.')[1];
-        } else if (sender!.contains('SBIBNK')) {
-          preciseMessage = message!;
         } else {
           preciseMessage = message!;
         }
-        // debugPrint(message.split('.')[0]);
 
         bot.sendMessage(
-            ChatID(-1001862858056),
+            ChatID(telegramChatId),
             '\nMessage from ' +
                 sender.split('-')[1] +
                 ':\n\n' +
@@ -88,15 +84,32 @@ sendTelegram(String? message, String? sender) {
           debugPrint('error--------');
         }
 
+        // Send message to Odoo server
+        await sendToOdooServer(sender.split('-')[1], preciseMessage);
+
         debugPrint('message sent');
-        // bot.start(clean: true).then((value) {
-        //   bot.sendMessage(ChatID(-593020411), stringToSend!);
-        //   debugPrint('message sent');
-        // });
       },
-      // Handle start failure
       onStartFailed: (bot, e, s) => print('Start failed'),
     );
+  }
+}
+
+Future<void> sendToOdooServer(String sender, String message) async {
+  final response = await http.post(
+    Uri.parse(odooServerUrl),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonEncode(<String, String>{
+      'sender': sender,
+      'message': message,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    print("Message sent to Odoo server successfully");
+  } else {
+    print("Failed to send message to Odoo server");
   }
 }
 
@@ -107,22 +120,12 @@ void main() {
 class MyApp extends StatelessWidget {
   MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Fuels SMS Automator',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
       home: MyHomePage(title: 'Fuels SMS Automator'),
@@ -133,15 +136,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -150,7 +144,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String _message = "";
-  bool _scanningEnabled = true; // Variable to track the scanning state
+  bool _scanningEnabled = true;
 
   TextEditingController messageController = TextEditingController();
   TextEditingController senderController = TextEditingController();
@@ -176,12 +170,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-// Platform messages are asynchronous, so we initialize in an async method.
   Future<void> initPlatformState() async {
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
     ParseConstants().initParse().then((result) {
       if (result) {
         print('Database Connected');
@@ -208,8 +197,7 @@ class _MyHomePageState extends State<MyHomePage> {
     const androidConfig = FlutterBackgroundAndroidConfig(
       notificationTitle: "Zaptr Automator",
       notificationText: "Your own personal automator",
-      notificationImportance: AndroidNotificationImportance
-          .Default, // Default is ic_launcher from folder mipmap
+      notificationImportance: AndroidNotificationImportance.Default,
     );
     bool success =
         await FlutterBackground.initialize(androidConfig: androidConfig);
@@ -225,6 +213,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _dummyCallback(SmsMessage message) {
     // Dummy callback, does nothing
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -257,10 +246,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
                 onPressed: () {
                   sendTelegram(messageController.text, senderController.text);
-                  // setState(() {
-                  //   messageController.clear();
-                  //   senderController.clear();
-                  // });
                 },
                 child: Text('Send')),
             ElevatedButton(
@@ -286,7 +271,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Center(child: Text("Latest received SMS: $_message")),
           ],
         ),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
 }

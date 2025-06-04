@@ -8,13 +8,13 @@ class ApplicationConstants {
   static const String keyParseApplicationId = "myappID";
   static const String keyParseMasterKey = "mymasterKey";
   static const String keyParseServerUrl =
-      "https://sfuelsdev.com/parse-server/parse";
+      "http://64.227.186.40:1337/parse-server/parse";
 
 //  static const String keyParseServerUrl = "http://sowdambigajewellers.com/parse-server/";
 //  static const String keyParseServerUrl = "http://134.209.150.23:1337/parse";
 //  static const String keyParseServerUrl = "https://sowdambigajewellers.com/parse-server/parse";
 //  static const String keyParseServerUrl = "https://zaptrdev.com/parse-server/parse";
-  static const String version = 'v1.0.8';
+  static const String version = 'v2.0.0';
   static const String passcode = '1221';
 
   //getting the gramRate from the JewelleryOp class from the parse server on gram rate updates

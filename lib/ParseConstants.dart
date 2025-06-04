@@ -12,7 +12,7 @@ class ParseConstants {
     await Parse().initialize(
       ApplicationConstants.keyParseApplicationId,
       ApplicationConstants.keyParseServerUrl,
-      masterKey: ApplicationConstants.keyParseMasterKey,
+      clientKey: ApplicationConstants.keyParseMasterKey,
     );
     var response = await Parse().healthCheck();
     print('response is ${response.toString()}');
