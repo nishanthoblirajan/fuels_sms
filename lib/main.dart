@@ -8,7 +8,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:fuels_sms/ApplicationConstants.dart';
 import 'package:http/http.dart' as http;
 import 'package:telephony/telephony.dart';
-
+import 'package:flutter/src/animation/animation.dart' as animation;
 void onBackgroundMessage(SmsMessage message) {
   debugPrint("onBackgroundMessage: Received SMS from ${message.address}");
   sendTelegram(message.body, message.address);
@@ -45,7 +45,6 @@ Future<void> sendTelegram(String? message, String? sender) async {
       (sender.contains('STERNA') || sender.contains('ALSRAM')) ||
       (sender.contains('CBSSBI') && message.contains('Credited')) ||
       (sender.contains('SBIINB') && message.contains('transfer')) ||
-      (sender.contains('SBIBNK') && message.contains('echeque')) ||
       (sender.contains('SBIPSG') && message.contains('credited')) ||
       (sender.contains('PHONPE') && message.contains('OTP'))) {
     debugPrint('sendTelegram: Message matches filter criteria');
@@ -170,9 +169,13 @@ class MyHomePage extends StatefulWidget {
   }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateMixin {
   String _message = "";
   bool _scanningEnabled = true;
+  List<String> _logs = []; // List to store terminal logs
+  final ScrollController _scrollController = ScrollController(); // Controller for scrolling
+  late AnimationController _cursorController; // Controller for blinking cursor
+  late animation.Animation<double> _cursorAnimation; // Animation for cursor blinking
 
   TextEditingController messageController = TextEditingController();
   TextEditingController senderController = TextEditingController();
@@ -180,9 +183,41 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
-    debugPrint('_MyHomePageState: Initializing state');
+    debugPrint('MyHomePageState: Initializing state');
     super.initState();
     initPlatformState();
+    // Initialize cursor animation
+    _cursorController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    )..repeat(reverse: true);
+    _cursorAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_cursorController);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose(); // Dispose of the ScrollController
+    _cursorController.dispose(); // Dispose of the AnimationController
+    super.dispose();
+  }
+
+  // Override debugPrint to capture logs and scroll to bottom
+  void debugPrint(String message) {
+    setState(() {
+      _logs.add('[${DateTime.now().toIso8601String()}] $message');
+      if (_logs.length > 100) _logs.removeAt(0); // Limit log size
+      // Scroll to the bottom after adding a new log
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    });
+    print(message); // Retain original console output
   }
 
   onMessage(SmsMessage message) async {
@@ -247,55 +282,202 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        backgroundColor: Colors.black87,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'This app will read incoming sms and send to Sowdambiga Fuels Telegram group',
-            ),
-            TextField(
-                controller: senderController,
-                decoration: InputDecoration(label: Text('Sender'))),
-            TextField(
-              controller: messageController,
-              decoration: InputDecoration(label: Text('Message')),
-            ),
-            ElevatedButton(
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'This app will read incoming SMS and send to Sowdambiga Fuels Telegram group',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: TextField(
+                  controller: senderController,
+                  decoration: InputDecoration(
+                    label: Text('Sender'),
+                    labelStyle: TextStyle(color: Colors.cyanAccent),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.cyanAccent),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
+                    ),
+                  ),
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: TextField(
+                  controller: messageController,
+                  decoration: InputDecoration(
+                    label: Text('Message'),
+                    labelStyle: TextStyle(color: Colors.cyanAccent),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.cyanAccent),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.cyanAccent, width: 2),
+                    ),
+                  ),
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              ElevatedButton(
                 onPressed: () {
                   debugPrint('Button: Send pressed, sending manual message');
                   sendTelegram(messageController.text, senderController.text);
                 },
-                child: Text('Send')),
-            ElevatedButton(
-              onPressed: () {
-                debugPrint('Button: Toggling scan, current state=$_scanningEnabled');
-                setState(() {
-                  _scanningEnabled = !_scanningEnabled;
-                  debugPrint('Button: Scan state changed to $_scanningEnabled');
-                });
-              },
-              child: Text(_scanningEnabled ? 'Stop Scan' : 'Start Scan'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                debugPrint('Button: Check background process pressed');
-                bool enabled = FlutterBackground.isBackgroundExecutionEnabled;
-                debugPrint('Button: Background execution enabled=$enabled');
-                if (enabled) {
-                  const snackbar = SnackBar(
-                    content: Text('Enabled'),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(snackbar);
-                }
-              },
-              child: Text('Check background process'),
-            ),
-            Center(child: Text("Latest received SMS: $_message")),
-          ],
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyanAccent,
+                  foregroundColor: Colors.black,
+                ),
+                child: Text('Send'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  debugPrint('Button: Toggling scan, current state=$_scanningEnabled');
+                  setState(() {
+                    _scanningEnabled = !_scanningEnabled;
+                    debugPrint('Button: Scan state changed to $_scanningEnabled');
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyanAccent,
+                  foregroundColor: Colors.black,
+                ),
+                child: Text(_scanningEnabled ? 'Stop Scan' : 'Start Scan'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  debugPrint('Button: Check background process pressed');
+                  bool enabled = FlutterBackground.isBackgroundExecutionEnabled;
+                  debugPrint('Button: Background execution enabled=$enabled');
+                  if (enabled) {
+                    const snackbar = SnackBar(
+                      content: Text('Enabled'),
+                      backgroundColor: Colors.cyanAccent,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(snackbar);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyanAccent,
+                  foregroundColor: Colors.black,
+                ),
+                child: Text('Check background process'),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  "Latest received SMS: $_message",
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+              // Terminal-like view
+              Container(
+                height: 200,
+                margin: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.black87, Colors.black54],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: Colors.cyanAccent.withOpacity(0.5)),
+                  borderRadius: BorderRadius.circular(8.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.cyanAccent.withOpacity(0.3),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    // Scan line animation
+                    CustomPaint(
+                      painter: ScanLinePainter(),
+                      child: Container(),
+                    ),
+                    // Log list
+                    ListView.builder(
+                      controller: _scrollController,
+                      itemCount: _logs.length + 1, // +1 for cursor
+                      itemBuilder: (context, index) {
+                        if (index == _logs.length) {
+                          // Blinking cursor
+                          return FadeTransition(
+                            opacity: _cursorAnimation,
+                            child: Text(
+                              '_',
+                              style: TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 12,
+                                color: Colors.cyanAccent,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.cyanAccent.withOpacity(0.5),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        return Text(
+                          _logs[index],
+                          style: TextStyle(
+                            fontFamily: 'RobotoMono',
+                            fontSize: 12,
+                            color: Colors.cyanAccent,
+                            shadows: [
+                              Shadow(
+                                color: Colors.cyanAccent.withOpacity(0.5),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+// Custom painter for scan line effect
+class ScanLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.cyanAccent.withOpacity(0.2)
+      ..strokeWidth = 1.0;
+
+    // Draw horizontal scan line
+    canvas.drawLine(
+      Offset(0, size.height * 0.1),
+      Offset(size.width, size.height * 0.1),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
