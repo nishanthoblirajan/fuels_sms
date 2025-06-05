@@ -18,6 +18,9 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.0.0+1
 
+#Use Flutter version below
+#git checkout 3.10.0
+
 environment:
   sdk: '>=2.19.6 <3.0.0'
 
