@@ -4,7 +4,7 @@ import 'package:encrypt/encrypt.dart';
 class ApplicationConstants {
   static const int updateFrequency = 2;
   static const String botToken =
-      '6038774955:AAFDOwlNXxC5AMlH_ZvHhjZj0WEHCEqy9r0';
+      '6038774955:AAGokIq7jl_GJjNjr01k5MnZF54O0GfXgR4';
   static const String keyParseApplicationId = "myappID";
   static const String keyParseMasterKey = "mymasterKey";
   static const String keyParseServerUrl =
@@ -14,7 +14,7 @@ class ApplicationConstants {
 //  static const String keyParseServerUrl = "http://134.209.150.23:1337/parse";
 //  static const String keyParseServerUrl = "https://sowdambigajewellers.com/parse-server/parse";
 //  static const String keyParseServerUrl = "https://zaptrdev.com/parse-server/parse";
-  static const String version = 'v2.2.0';
+  static const String version = 'v3.0.0';
   static const String passcode = '1221';
 
   //getting the gramRate from the JewelleryOp class from the parse server on gram rate updates
