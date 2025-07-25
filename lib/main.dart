@@ -6,14 +6,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:fuels_sms/ApplicationConstants.dart';
+import 'package:fuels_sms/settings.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:telephony/telephony.dart';
 import 'package:flutter/src/animation/animation.dart' as animation;
 void onBackgroundMessage(SmsMessage message) {
   debugPrint("onBackgroundMessage: Received SMS from ${message.address}");
   sendTelegram(message.body, message.address);
 }
+Future<void> initializeDefaultSettings() async {
+  final prefs = await SharedPreferences.getInstance();
 
+  // Check if values already exist
+  if (!prefs.containsKey('telegramBotToken')) {
+    await prefs.setString('telegramBotToken', '6038774955:AAGokIq7jl_GJjNjr01k5MnZF54O0GfXgR4');
+  }
+
+  if (!prefs.containsKey('telegramChatId')) {
+    await prefs.setString('telegramChatId', '-1001862858056');
+  }
+
+  if (!prefs.containsKey('otpBotToken')) {
+    await prefs.setString('otpBotToken', '8112541883:AAHZhrMc7QuVuuTZSWYLvGN7mAbyDdzD8Ls');
+  }
+
+  if (!prefs.containsKey('otpGroupId')) {
+    await prefs.setString('otpGroupId', '-4810490033');
+  }
+}
 const String telegramBotToken =
     '6038774955:AAGokIq7jl_GJjNjr01k5MnZF54O0GfXgR4';
 const int telegramChatId = -1001862858056;
@@ -24,7 +45,24 @@ const int otpGroupId = -4810490033;
 const String odooServerUrl =
     'http://128.199.25.245:8069/api/telegram/message';
 
+Future<Map<String, dynamic>> getSettings() async {
+  final prefs = await SharedPreferences.getInstance();
+  return {
+    'telegramBotToken': prefs.getString('telegramBotToken') ?? '',
+    'telegramChatId': int.tryParse(prefs.getString('telegramChatId') ?? '') ?? 0,
+    'otpBotToken': prefs.getString('otpBotToken') ?? '',
+    'otpGroupId': int.tryParse(prefs.getString('otpGroupId') ?? '') ?? 0,
+  };
+}
 Future<void> sendTelegram(String? message, String? sender) async {
+  final settings = await getSettings();
+  String telegramBotToken = settings['telegramBotToken']!;
+  int telegramChatId = settings['telegramChatId']! as int;
+  String otpBotToken = settings['otpBotToken']!;
+  int otpGroupId = settings['otpGroupId']! as int;
+
+
+
   debugPrint("sendTelegram: Called with sender=$sender, message=$message");
   String preciseMessage = '';
 
@@ -134,8 +172,12 @@ Future<void> sendToOdooServer(String sender, String message) async {
   }
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   debugPrint('main: Starting application');
+
+  await initializeDefaultSettings();
   runApp(MyApp());
 }
 
@@ -283,7 +325,19 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
       appBar: AppBar(
         title: Text(widget.title),
         backgroundColor: Colors.black87,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsPage()),
+              );
+            },
+          ),
+        ],
       ),
+
       body: SingleChildScrollView(
         child: Center(
           child: Column(
